@@ -5,10 +5,12 @@ import Image from "../models/Image"; // Adjust the path as necessary
 
 const router = express.Router();
 
-interface MulterRequest extends Request {
-    file?: Express.Multer.File;
-}
-const upload = multer({ storage: multer.memoryStorage() }); // Store file in memory
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+});
 
 // Function to validate hash
 function isValidHash(hash: string): boolean {
@@ -16,9 +18,14 @@ function isValidHash(hash: string): boolean {
     return typeof hash === 'string' && hash.length === 64; // Example: Check if it's a 64-character string
 }
 
+router.get("/", (req: Request, res: Response) => {
+    res.json("Hello World from the image route!");
+});
+
 // Upload an image that contains a hash to the database
-router.post("/upload", upload.single("image"), async (req: MulterRequest, res: Response) => {
+router.post("/upload", upload.single("image"), async (req: Request, res: Response) => {
     try {
+        console.log(req.file);
         if (!req.file) {
             res.status(400).json({ message: "No image uploaded" });
             return;
@@ -30,26 +37,30 @@ router.post("/upload", upload.single("image"), async (req: MulterRequest, res: R
         const metadata = await sharp(buffer).metadata();
 
         if (!metadata.comments) {
+            console.log("NO HASH");
             res.status(400).json({ message: "No hash found" });
             return;
         }
         // Check if the hash is already in the database
         const existingImage = await Image.findOne({ hash: metadata.comments });
         if (existingImage) {
+            console.log("IMAGE EXISTS")
             res.status(400).json({ message: "Hash already exists" });
             return;
         }
         // Check if the comment is a valid hash
         const comment = metadata.comments.find((comment: any) => comment.keyword === "FauxHash");
-        if (!comment) { 
+        if (!comment) {
+            console.log("NO HASH")
             res.status(400).json({ message: "No hash found" });
             return
         }
         if (!isValidHash(comment?.text)) {
+            console.log("INVALID HASH") 
             res.status(400).json({ message: "Invalid hash" });
             return;
         }
-        
+
         const newImage = await Image.create({
             data: buffer,
             contentType: mimetype,
@@ -63,6 +74,7 @@ router.post("/upload", upload.single("image"), async (req: MulterRequest, res: R
         await newImage.save();
         res.status(201).json({ message: "Image uploaded successfully!" });
     } catch (error) {
+        console.log(error);
         res.status(500).json({ message: "Error uploading image", error });
     }
 });
