@@ -1,10 +1,11 @@
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import helmet from "helmet";
 import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
-import cors from "cors";
-import dotenv from "dotenv";
-import express from "express";
-import helmet from "helmet";
-import mongoose from "mongoose";
+import imageRoutes from "./routes/image"; // Correct the path to the routes file
 
 dotenv.config();
 
@@ -14,37 +15,35 @@ const dbUrl = process.env.MONGO_URL as string;
 // Middleware
 app.use(express.json());
 app.use(helmet());
-app.use(
-	cors({
-		origin: "*",
-		methods: ["GET", "POST", "PATCH", "DELETE"]
-	})
-);
+app.use(cors({
+    origin: "*",
+    methods: ["GET", "POST", "PATCH", "DELETE"]
+}));
 app.options("*", cors());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Database Connection
-mongoose
-	.connect(dbUrl)
-	.then(() => console.log("Connected to MongoDB"))
-	.catch((err) => console.log("Error connecting to MongoDB", err));
-
-
-// app.use("/test/instructor", instructorTestRoutes);
+// Routes
+app.use("/", imageRoutes);
 
 app.get("/", (req, res) => {
-	res.json("Hello World from the server!");
+    res.json("Hello World from the server!");
 });
 
-app.get("/testing", (req, res) => {
-	res.json("Testing");
-});
+export const startServer = async () => {
+    try {
+        await mongoose.connect(dbUrl);
+        console.log("Connected to MongoDB");
+        const server = app.listen(4000, () => {
+            console.log("Server is running on port 4000");
+        });
+        return server;
+    } catch (error) {
+        console.error("Error connecting to MongoDB", error);
+        process.exit(1);
+    }
+};
 
-app.get("/test2", (req, res) => {
-	res.json("Testing again");
-});
-
-app.listen(4000, () => {
-	console.log("Server is running on port 4000");
-});
+if (require.main === module) {
+    startServer();
+}
