@@ -7,6 +7,9 @@
       "strict": true,
       "skipLibCheck": true,
       "resolveJsonModule": true
-    }
+    },
+    "files": [
+      "exiftool-kit.d.ts"
+    ]
   }
   
